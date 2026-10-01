@@ -1,4 +1,5 @@
 import os
+import csv
 import rpyc
 import time
 import random
@@ -8,6 +9,7 @@ from dataclasses import dataclass
 
 """======================================================================================================================================"""
 deleteClosedRequests = False
+exportLogs = True
 requestRate = 50
 numRequests = 1000
 """======================================================================================================================================"""
@@ -35,6 +37,16 @@ def readAvailableFileNames():
     fileNames = os.listdir("SampleTexts")         #read every file name in the folder
     fileNames = [name[:-4] for name in fileNames]     #remove .txt
 
+def exportToCSV():
+    #filename = f"clientLog_{requestRate}_{numRequests}.csv"
+    filename = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            f"clientLog_{requestRate}_{numRequests}_Phase2.csv")
+    with req_lock:
+        with open(filename, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["reqID", "keyword", "text", "response", "e2eTime_us"])
+            for r in req:
+                writer.writerow([r.reqID, r.keyword, r.text, r.response, r.e2eTime])
 
 def newRequest() -> request:
     global currID
@@ -105,8 +117,16 @@ def main():
 
     sendRequests(async_count, requestRate, done_sem, numRequests)   #fire off all requests
 
-    while True:
-        pass
+    for received in range(numRequests):
+        if not done_sem.acquire(timeout=30):    # per-response timeout so a lost reply can't hang forever
+            print(f"TIMEOUT: only {received}/{numRequests} responses received")
+            break
+
+    if exportLogs:
+            exportToCSV()
+            print("LOG FILE EXPORTED")
+    
+    print("CLIENT HAS FINISHED EXECUTING")
 
 
 if __name__ == "__main__":

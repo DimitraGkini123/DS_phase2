@@ -1,17 +1,48 @@
-version: "3.9"
-
 services:
   redis:
     image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    networks:
-      - wordcount-net
-  
-  #server:
-  #client:
-  
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+    networks: [wordcount-net]
+
+  server:
+    build: .
+    command: python -u -m server.server
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app
+    expose:
+      - "18861"
+    volumes:
+      - ./SampleTexts:/app/SampleTexts
+      - ./server:/app/server
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 18861), 2).close()"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    networks: [wordcount-net]
+
+  client:
+    build: .
+    command: python -u client/client.py
+    working_dir: /app
+    environment:
+      SERVER_HOST: server
+    volumes:
+      - ./SampleTexts:/app/SampleTexts
+      - ./client:/app/client
+    depends_on:
+      server:
+        condition: service_healthy
+    networks: [wordcount-net]
+
 networks:
   wordcount-net:
     driver: bridge
