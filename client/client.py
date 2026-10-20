@@ -37,7 +37,7 @@ latencyList: list[int] = []
 def exportToCSV():
     #filename = f"clientLog_{requestRate}_{numRequests}.csv"
     filename = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               f"clientLog_{requestRate}_{numRequests}_Phase3.csv")
+                               f"clientLog_{requestRate}_{numRequests}_Phase2.csv")
     with req_lock:
         with open(filename, "w", newline="") as f:
             writer = csv.writer(f)
